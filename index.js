@@ -119,15 +119,16 @@ if (req.url.startsWith("/test-branch")) {
         });
 
         if (selectedBranch) {
-          res.end(JSON.stringify({
-            customer_address: address,
-            selected_branch: selectedBranch.name,
-            branch_code: selectedBranch.code,
-            district: selectedBranch.district_name,
-            province: selectedBranch.province_name,
-            branch_address: selectedBranch.address,
-            delivery_surcharge: selectedBranch.surcharge
-          }, null, 2));
+  res.end(JSON.stringify({
+    customer_address: address,
+    selected_branch: selectedBranch.name,
+    branch_code: selectedBranch.code,
+    district: selectedBranch.district_name,
+    province: selectedBranch.province_name,
+    branch_address: selectedBranch.address,
+    delivery_surcharge: selectedBranch.surcharge,
+    matched_branch_raw: selectedBranch
+  }, null, 2));
         } else {
           res.end(JSON.stringify({
             customer_address: address,
