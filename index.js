@@ -335,7 +335,9 @@ async function getShopifyAccessToken() {
   );
 
   return await response.json();
-  // Test Shopify token
+}
+
+// Test Shopify token
 if (req.url === "/test-shopify-token") {
   getShopifyAccessToken()
     .then((data) => {
@@ -361,7 +363,7 @@ if (req.url === "/test-shopify-token") {
 
   return;
 }
-}
+
 // Test Shopify connection
 if (req.url === "/test-shopify") {
   res.writeHead(200, {
