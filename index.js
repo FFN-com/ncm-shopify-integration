@@ -146,6 +146,132 @@ if (req.url.startsWith("/test-rate")) {
 
   return;
 }
+```js
+// Combined NCM delivery test: address -> branch -> rate
+if (req.url.startsWith("/test-delivery")) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  const address = url.searchParams.get("address");
+  const type = url.searchParams.get("type") || "Send";
+
+  if (!address) {
+    res.writeHead(400, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      error: "Please provide an address. Example: /test-delivery?address=Gairapatan&type=Send"
+    }));
+
+    return;
+  }
+
+  if (type !== "Send" && type !== "B2B") {
+    res.writeHead(400, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      error: "Invalid delivery type. Use Send or B2B."
+    }));
+
+    return;
+  }
+
+  const source = "TINKUNE";
+  const searchAddress = address.trim().toUpperCase();
+
+  // Get NCM branches
+  getNcmData("/api/v2/vendor/assigned-branches", (statusCode, data) => {
+    try {
+      const branches = JSON.parse(data);
+
+      // First: exact branch name match
+      let selectedBranch = branches.find(branch =>
+        (branch.name || "").trim().toUpperCase() === searchAddress
+      );
+
+      // Second: match an area covered by a branch
+      if (!selectedBranch) {
+        selectedBranch = branches.find(branch =>
+          (branch.areas_covered || "")
+            .toUpperCase()
+            .includes(searchAddress)
+        );
+      }
+
+      if (!selectedBranch) {
+        res.writeHead(404, {
+          "Content-Type": "application/json"
+        });
+
+        res.end(JSON.stringify({
+          test_mode: true,
+          customer_address: address,
+          message: "No matching NCM branch found"
+        }, null, 2));
+
+        return;
+      }
+
+      const destination = selectedBranch.name;
+
+      // Get NCM shipping rate
+      const ratePath =
+        `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
+        `&destination=${encodeURIComponent(destination)}` +
+        `&type=${encodeURIComponent(type)}`;
+
+      getNcmData(ratePath, (rateStatusCode, rateData) => {
+        try {
+          const rateResponse = JSON.parse(rateData);
+
+          res.writeHead(rateStatusCode, {
+            "Content-Type": "application/json"
+          });
+
+          res.end(JSON.stringify({
+            test_mode: true,
+            message: "Branch lookup and rate lookup only. No NCM delivery order was created.",
+            customer_address: address,
+            source_branch: source,
+            destination_branch: selectedBranch.name,
+            branch_code: selectedBranch.code,
+            district: selectedBranch.district_name,
+            province: selectedBranch.province_name,
+            delivery_type: type === "Send"
+              ? "Branch2Door"
+              : "Branch2Branch",
+            ncm_delivery_charge: rateResponse.charge
+          }, null, 2));
+
+        } catch (error) {
+          res.writeHead(500, {
+            "Content-Type": "application/json"
+          });
+
+          res.end(JSON.stringify({
+            error: "Failed to process NCM rate data",
+            raw_response: rateData
+          }, null, 2));
+        }
+      });
+
+    } catch (error) {
+      res.writeHead(500, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        error: "Failed to process NCM branch data",
+        details: error.message
+      }, null, 2));
+    }
+  });
+
+  return;
+}
+```
 
   // Page not found
   res.writeHead(404, {
