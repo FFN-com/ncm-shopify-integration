@@ -3,10 +3,10 @@ const https = require("https");
 
 const port = process.env.PORT || 10000;
 
-function getNcmBranches(callback) {
+function getNcmData(path, callback) {
   const options = {
     hostname: "demo.nepalcanmove.com",
-    path: "/api/v2/vendor/assigned-branches",
+    path: path,
     method: "GET",
     headers: {
       Authorization: `Token ${process.env.NCM_API_TOKEN}`,
@@ -27,7 +27,12 @@ function getNcmBranches(callback) {
   });
 
   request.on("error", (error) => {
-    callback(500, JSON.stringify({ error: error.message }));
+    callback(
+      500,
+      JSON.stringify({
+        error: error.message,
+      })
+    );
   });
 
   request.end();
@@ -37,31 +42,61 @@ const server = http.createServer((req, res) => {
 
   // Main page
   if (req.url === "/") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.writeHead(200, {
+      "Content-Type": "text/plain",
+    });
+
     res.end("NCM Shopify Integration is running!");
     return;
   }
 
-  // Shopify callback
+  // Shopify authentication callback
   if (req.url.startsWith("/auth/callback")) {
-    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.writeHead(200, {
+      "Content-Type": "text/plain",
+    });
+
     res.end("Shopify authentication callback received successfully!");
     return;
   }
 
-  // Test NCM API connection
+  // Test vendor assigned pickup branches
   if (req.url.startsWith("/test-ncm")) {
-    getNcmBranches((statusCode, data) => {
-      res.writeHead(statusCode, {
-        "Content-Type": "application/json",
-      });
-      res.end(data);
-    });
+    getNcmData(
+      "/api/v2/vendor/assigned-branches",
+      (statusCode, data) => {
+        res.writeHead(statusCode, {
+          "Content-Type": "application/json",
+        });
+
+        res.end(data);
+      }
+    );
+
+    return;
+  }
+
+  // Test all NCM branches
+  if (req.url.startsWith("/test-branches")) {
+    getNcmData(
+      "/api/v2/branches",
+      (statusCode, data) => {
+        res.writeHead(statusCode, {
+          "Content-Type": "application/json",
+        });
+
+        res.end(data);
+      }
+    );
+
     return;
   }
 
   // Page not found
-  res.writeHead(404, { "Content-Type": "text/plain" });
+  res.writeHead(404, {
+    "Content-Type": "text/plain",
+  });
+
   res.end("Page not found");
 });
 
