@@ -100,10 +100,20 @@ if (req.url.startsWith("/test-branch")) {
 
         const searchAddress = address.trim().toUpperCase();
 
-        const selectedBranch = branches.find(branch =>
-          branch.name &&
-          branch.name.trim().toUpperCase() === searchAddress
-        );
+        let selectedBranch = branches.find(branch =>
+  branch.name &&
+  branch.name.trim().toUpperCase() === searchAddress
+);
+
+// If no branch name matches, check the areas covered
+if (!selectedBranch) {
+  selectedBranch = branches.find(branch => {
+    const areas = (branch.areas_covered || "")
+      .toUpperCase();
+
+    return areas.includes(searchAddress);
+  });
+}
 
         if (!selectedBranch) {
           res.writeHead(200, {
