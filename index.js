@@ -100,19 +100,31 @@ if (req.url.startsWith("/test-branch")) {
 
         const searchAddress = address.toUpperCase();
 
-        const selectedBranch = branches.find(branch => {
-          const branchName = (branch.name || "").toUpperCase();
-          const district = (branch.district_name || "").toUpperCase();
-          const areas = (branch.areas_covered || "").toUpperCase();
-          const branchAddress = (branch.address || "").toUpperCase();
+     let selectedBranch = branches.find(branch =>
+  (branch.name || "").toUpperCase() === searchAddress
+);
 
-          return (
-            searchAddress.includes(branchName) ||
-            searchAddress.includes(district) ||
-            areas.includes(searchAddress) ||
-            branchAddress.includes(searchAddress)
-          );
-        });
+if (!selectedBranch) {
+  selectedBranch = branches.find(branch =>
+    (branch.district_name || "").toUpperCase() === searchAddress
+  );
+}
+
+if (!selectedBranch) {
+  selectedBranch = branches.find(branch =>
+    (branch.areas_covered || "")
+      .toUpperCase()
+      .includes(searchAddress)
+  );
+}
+
+if (!selectedBranch) {
+  selectedBranch = branches.find(branch =>
+    searchAddress.includes(
+      (branch.name || "").toUpperCase()
+    )
+  );
+}
 
         res.writeHead(200, {
           "Content-Type": "application/json"
