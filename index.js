@@ -86,68 +86,52 @@ if (req.url.startsWith("/test-branch")) {
     });
 
     res.end(JSON.stringify({
-      error: "Please provide an address. Example: /test-branch?address=Pokhara"
+      error: "Please provide an address"
     }));
 
     return;
   }
 
   getNcmData(
-    "/api/v2/vendor/assigned-branches",
+    "/api/v2/branches",
     (statusCode, data) => {
       try {
         const branches = JSON.parse(data);
 
-        const searchAddress = address.toUpperCase();
+        const searchAddress = address.trim().toUpperCase();
 
-     let selectedBranch = branches.find(branch =>
-  (branch.name || "").toUpperCase() === searchAddress
-);
+        const selectedBranch = branches.find(branch =>
+          branch.name &&
+          branch.name.trim().toUpperCase() === searchAddress
+        );
 
-if (!selectedBranch) {
-  selectedBranch = branches.find(branch =>
-    (branch.district_name || "").toUpperCase() === searchAddress
-  );
-}
+        if (!selectedBranch) {
+          res.writeHead(200, {
+            "Content-Type": "application/json"
+          });
 
-if (!selectedBranch) {
-  selectedBranch = branches.find(branch =>
-    (branch.areas_covered || "")
-      .toUpperCase()
-      .includes(searchAddress)
-  );
-}
+          res.end(JSON.stringify({
+            customer_address: address,
+            selected_branch: null,
+            message: "No exact NCM branch match found"
+          }, null, 2));
 
-if (!selectedBranch) {
-  selectedBranch = branches.find(branch =>
-    searchAddress.includes(
-      (branch.name || "").toUpperCase()
-    )
-  );
-}
+          return;
+        }
 
         res.writeHead(200, {
           "Content-Type": "application/json"
         });
 
-        if (selectedBranch) {
-  res.end(JSON.stringify({
-    customer_address: address,
-    selected_branch: selectedBranch.name,
-    branch_code: selectedBranch.code,
-    district: selectedBranch.district_name,
-    province: selectedBranch.province_name,
-    branch_address: selectedBranch.address,
-    delivery_surcharge: selectedBranch.surcharge,
-    matched_branch_raw: selectedBranch
-  }, null, 2));
-        } else {
-          res.end(JSON.stringify({
-            customer_address: address,
-            selected_branch: null,
-            message: "No matching NCM branch found"
-          }, null, 2));
-        }
+        res.end(JSON.stringify({
+          customer_address: address,
+          selected_branch: selectedBranch.name,
+          branch_code: selectedBranch.code,
+          district: selectedBranch.district_name,
+          province: selectedBranch.province_name,
+          branch_address: selectedBranch.address,
+          delivery_surcharge: selectedBranch.surcharge
+        }, null, 2));
 
       } catch (error) {
         res.writeHead(500, {
