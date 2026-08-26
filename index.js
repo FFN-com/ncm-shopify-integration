@@ -315,6 +315,27 @@ if (req.method === "POST" && req.url === "/webhooks/orders-create") {
 
   return;
 }
+  // Get Shopify access token
+async function getShopifyAccessToken() {
+  const shop = process.env.SHOPIFY_STORE;
+
+  const response = await fetch(
+    `https://${shop}/admin/oauth/access_token`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: process.env.SHOPIFY_CLIENT_ID,
+        client_secret: process.env.SHOPIFY_CLIENT_SECRET
+      })
+    }
+  );
+
+  return await response.json();
+}
 // Test Shopify connection
 if (req.url === "/test-shopify") {
   res.writeHead(200, {
