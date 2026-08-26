@@ -181,7 +181,7 @@ if (req.url.startsWith("/test-delivery")) {
   const searchAddress = address.trim().toUpperCase();
 
   // Get NCM branches
-  getNcmData("/api/v2/vendor/assigned-branches", (statusCode, data) => {
+ getNcmData("/api/v2/branches", (statusCode, data) => {
     try {
       const branches = JSON.parse(data);
 
