@@ -146,7 +146,6 @@ if (req.url.startsWith("/test-rate")) {
 
   return;
 }
-```js
 // Combined NCM delivery test: address -> branch -> rate
 if (req.url.startsWith("/test-delivery")) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -271,7 +270,6 @@ if (req.url.startsWith("/test-delivery")) {
 
   return;
 }
-```
 
   // Page not found
   res.writeHead(404, {
