@@ -270,6 +270,51 @@ if (req.url.startsWith("/test-delivery")) {
 
   return;
 }
+// Shopify orders/create webhook - test receiver
+if (req.method === "POST" && req.url === "/webhooks/orders-create") {
+  let body = "";
+
+  req.on("data", (chunk) => {
+    body += chunk;
+  });
+
+  req.on("end", () => {
+    try {
+      const order = JSON.parse(body);
+
+      console.log("New Shopify order received:");
+      console.log(JSON.stringify(order, null, 2));
+
+      res.writeHead(200, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        received: true,
+        test_mode: true,
+        message: "Shopify order webhook received successfully",
+        order_id: order.id,
+        order_name: order.name,
+        shipping_city: order.shipping_address
+          ? order.shipping_address.city
+          : null
+      }));
+
+    } catch (error) {
+      res.writeHead(400, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        received: false,
+        error: "Invalid Shopify webhook data",
+        details: error.message
+      }));
+    }
+  });
+
+  return;
+}
 
   // Page not found
   res.writeHead(404, {
