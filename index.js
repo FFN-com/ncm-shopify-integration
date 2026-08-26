@@ -63,7 +63,7 @@ const server = http.createServer((req, res) => {
   // Test vendor assigned pickup branches
   if (req.url.startsWith("/test-ncm")) {
     getNcmData(
-      "/api/v2/vendor/assigned-branches",
+     "/api/v2/branches",
       (statusCode, data) => {
         res.writeHead(statusCode, {
           "Content-Type": "application/json",
