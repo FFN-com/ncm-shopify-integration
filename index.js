@@ -363,23 +363,6 @@ if (req.url === "/test-shopify-token") {
 
   return;
 }
-
-// Test Shopify connection
-if (req.url === "/test-shopify") {
-  res.writeHead(200, {
-    "Content-Type": "application/json"
-  });
-
-  res.end(JSON.stringify({
-    test_mode: true,
-    message: "Shopify test route is working",
-    shop: process.env.SHOPIFY_STORE,
-    client_id_configured: !!process.env.SHOPIFY_CLIENT_ID,
-    client_secret_configured: !!process.env.SHOPIFY_CLIENT_SECRET
-  }, null, 2));
-
-  return;
-}
   // Page not found
   res.writeHead(404, {
     "Content-Type": "text/plain",
