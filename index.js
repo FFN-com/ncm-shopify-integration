@@ -34,6 +34,7 @@ function getNcmBranches(callback) {
 }
 
 const server = http.createServer((req, res) => {
+
   // Main page
   if (req.url === "/") {
     res.writeHead(200, { "Content-Type": "text/plain" });
@@ -49,7 +50,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Test NCM API connection
-  if (req.url === "/test-ncm") {
+  if (req.url.startsWith("/test-ncm")) {
     getNcmBranches((statusCode, data) => {
       res.writeHead(statusCode, {
         "Content-Type": "application/json",
@@ -59,6 +60,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Page not found
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Page not found");
 });
