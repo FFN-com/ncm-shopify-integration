@@ -360,6 +360,7 @@ async function getShopifyAccessToken() {
   const response = await fetch(
     `https://${shop}/admin/oauth/access_token`,
     {
+
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
@@ -379,6 +380,49 @@ async function getShopifyAccessToken() {
     content_type: response.headers.get("content-type"),
     body: text
   };
+}
+// Test Shopify orders
+if (req.url.startsWith("/test-shopify-orders")) {
+  getShopifyAccessToken()
+    .then(async (tokenData) => {
+      const tokenResponse = JSON.parse(tokenData.body);
+      const accessToken = tokenResponse.access_token;
+
+      const shop = process.env.SHOPIFY_STORE;
+
+      const response = await fetch(
+        `https://${shop}/admin/api/2026-07/orders.json?status=any&limit=5`,
+        {
+          headers: {
+            "X-Shopify-Access-Token": accessToken,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      res.writeHead(response.status, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        test_mode: true,
+        shopify_orders: data
+      }, null, 2));
+    })
+    .catch((error) => {
+      res.writeHead(500, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        test_mode: true,
+        error: error.message
+      }, null, 2));
+    });
+
+  return;
 }
   // Page not found
   res.writeHead(404, {
