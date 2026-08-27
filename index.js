@@ -12,7 +12,7 @@ function getNcmData(path, callback) {
       Authorization: `Token ${process.env.NCM_API_TOKEN}`,
       "Content-Type": "application/json",
     },
-  if (req.url.startsWith("/test-shopify-token")) {
+  };
 
   const request = https.request(options, (response) => {
     let data = "";
@@ -39,24 +39,32 @@ function getNcmData(path, callback) {
 }
 
 const server = http.createServer((req, res) => {
-    console.log("REQUEST RECEIVED:", req.method, req.url);
-if (req.url === "/hello") {
-  if (req.url === "/test-shopify-token") {
-  res.writeHead(200, {
-    "Content-Type": "application/json"
-  });
+  console.log("REQUEST RECEIVED:", req.method, req.url);
 
-  res.end(JSON.stringify({
-    test_mode: true,
-    message: "Shopify token route is working"
-  }, null, 2));
+  // Hello test
+  if (req.url === "/hello") {
+    res.writeHead(200, {
+      "Content-Type": "text/plain"
+    });
 
-  return;
-}
-    res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Hello! Render is running the latest code.");
     return;
   }
+
+  // Test Shopify token route
+  if (req.url.startsWith("/test-shopify-token")) {
+    res.writeHead(200, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      test_mode: true,
+      message: "Shopify token route is working"
+    }, null, 2));
+
+    return;
+  }
+
   // Main page
   if (req.url === "/") {
     res.writeHead(200, {
@@ -352,20 +360,6 @@ async function getShopifyAccessToken() {
   );
 
   return await response.json();
-}
-
-// Test Shopify token
-if (req.url === "/test-shopify-token") {
-  res.writeHead(200, {
-    "Content-Type": "application/json"
-  });
-
-  res.end(JSON.stringify({
-    test_mode: true,
-    message: "Shopify token route is working"
-  }, null, 2));
-
-  return;
 }
   // Page not found
   res.writeHead(404, {
