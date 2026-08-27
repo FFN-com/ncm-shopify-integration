@@ -502,6 +502,10 @@ if (req.url.startsWith("/test-order-delivery")) {
 
       const customerCity = order.shipping_address.city || "";
       const customerAddress = order.shipping_address.address1 || "";
+      const deliveryZone = getDeliveryZone(
+  customerCity,
+  customerAddress
+);
       const searchAddress = customerCity.trim().toUpperCase();
 
       // Get NCM branches
