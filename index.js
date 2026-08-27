@@ -12,7 +12,7 @@ function getNcmData(path, callback) {
       Authorization: `Token ${process.env.NCM_API_TOKEN}`,
       "Content-Type": "application/json",
     },
-  };
+  };if (req.url.startsWith("/test-shopify-token")) {
 
   const request = https.request(options, (response) => {
     let data = "";
