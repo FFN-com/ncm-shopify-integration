@@ -372,7 +372,13 @@ async function getShopifyAccessToken() {
     }
   );
 
-  return await response.json();
+  const text = await response.text();
+
+  return {
+    status: response.status,
+    content_type: response.headers.get("content-type"),
+    body: text
+  };
 }
   // Page not found
   res.writeHead(404, {
