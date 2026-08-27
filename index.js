@@ -51,19 +51,32 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Test Shopify token route
-  if (req.url.startsWith("/test-shopify-token")) {
-    res.writeHead(200, {
-      "Content-Type": "application/json"
+  // Test Shopify access token
+if (req.url.startsWith("/test-shopify-token")) {
+  getShopifyAccessToken()
+    .then((data) => {
+      res.writeHead(200, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        test_mode: true,
+        shopify_response: data
+      }, null, 2));
+    })
+    .catch((error) => {
+      res.writeHead(500, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        test_mode: true,
+        error: error.message
+      }, null, 2));
     });
 
-    res.end(JSON.stringify({
-      test_mode: true,
-      message: "Shopify token route is working"
-    }, null, 2));
-
-    return;
-  }
+  return;
+}
 
   // Main page
   if (req.url === "/") {
