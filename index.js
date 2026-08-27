@@ -511,13 +511,15 @@ const searchAddress = customerCity.trim().toUpperCase();
 
 // Handle Kathmandu Valley separately
 if (deliveryZone.zone === "KATHMANDU_VALLEY") {
+  const valleyDeliveryMethod = "NCM_VALLEY_TEST";
+
   res.writeHead(200, {
     "Content-Type": "application/json"
   });
 
   res.end(JSON.stringify({
     test_mode: true,
-    message: "Shopify order identified as Kathmandu Valley. No NCM delivery was created.",
+    message: "Kathmandu Valley delivery test successful. No real delivery was created.",
 
     shopify_order: {
       id: order.id,
@@ -528,10 +530,13 @@ if (deliveryZone.zone === "KATHMANDU_VALLEY") {
       delivery_type: deliveryZone.delivery_type
     },
 
-    ncm: {
-      source_branch: "TINKUNE",
-      destination_branch: null,
-      message: "Kathmandu Valley order detected. Separate Valley delivery handling will be added next."
+    valley_delivery: {
+      enabled: true,
+      method: valleyDeliveryMethod,
+      pickup_branch: "TINKUNE",
+      customer_location: customerAddress || customerCity,
+      status: "TEST_ONLY",
+      message: "Kathmandu Valley order successfully entered the Valley delivery flow."
     }
   }, null, 2));
 
