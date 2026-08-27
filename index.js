@@ -506,113 +506,143 @@ if (req.url.startsWith("/test-order-delivery")) {
   customerCity,
   customerAddress
 );
-      const searchAddress = customerCity.trim().toUpperCase();
 
-      // Get NCM branches
-      getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
-        try {
-          const branches = JSON.parse(branchData);
+const searchAddress = customerCity.trim().toUpperCase();
 
-          // Find matching NCM branch
-          let selectedBranch = branches.find(branch =>
-            (branch.name || "").trim().toUpperCase() === searchAddress
-          );
+// Handle Kathmandu Valley separately
+if (deliveryZone.zone === "KATHMANDU_VALLEY") {
+  res.writeHead(200, {
+    "Content-Type": "application/json"
+  });
 
-          // Try matching NCM service areas
-          if (!selectedBranch) {
-            selectedBranch = branches.find(branch =>
-              (branch.areas_covered || "")
-                .toUpperCase()
-                .includes(searchAddress)
-            );
-          }
+  res.end(JSON.stringify({
+    test_mode: true,
+    message: "Shopify order identified as Kathmandu Valley. No NCM delivery was created.",
 
-          if (!selectedBranch) {
-            res.writeHead(404, {
-              "Content-Type": "application/json"
-            });
+    shopify_order: {
+      id: order.id,
+      name: order.name,
+      customer_city: customerCity,
+      customer_address: customerAddress,
+      delivery_zone: deliveryZone.zone,
+      delivery_type: deliveryZone.delivery_type
+    },
 
-            res.end(JSON.stringify({
-              test_mode: true,
-              message: "Shopify order received, but no matching NCM branch was found",
-              order_id: order.id,
-              order_name: order.name,
-              customer_city: customerCity,
-              customer_address: customerAddress
-            }, null, 2));
+    ncm: {
+      source_branch: "TINKUNE",
+      destination_branch: null,
+      message: "Kathmandu Valley order detected. Separate Valley delivery handling will be added next."
+    }
+  }, null, 2));
 
-            return;
-          }
+  return;
+}
 
-          const source = "TINKUNE";
-          const destination = selectedBranch.name;
+// Outside Kathmandu Valley: find matching NCM branch
+getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
+  try {
+    const branches = JSON.parse(branchData);
 
-          // Get NCM shipping rate
-          const ratePath =
-            `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
-            `&destination=${encodeURIComponent(destination)}` +
-            `&type=Send`;
+    // Find matching NCM branch
+    let selectedBranch = branches.find(branch =>
+      (branch.name || "").trim().toUpperCase() === searchAddress
+    );
 
-          getNcmData(ratePath, (rateStatusCode, rateData) => {
-            try {
-              const rateResponse = JSON.parse(rateData);
+    // Try matching NCM service areas
+    if (!selectedBranch) {
+      selectedBranch = branches.find(branch =>
+        (branch.areas_covered || "")
+          .toUpperCase()
+          .includes(searchAddress)
+      );
+    }
 
-              res.writeHead(200, {
-                "Content-Type": "application/json"
-              });
-
-              res.end(JSON.stringify({
-                test_mode: true,
-                message: "Shopify order → NCM branch → shipping rate test successful. No delivery was created.",
-
-                shopify_order: {
-  id: order.id,
-  name: order.name,
-  customer_city: customerCity,
-  customer_address: customerAddress,
-  delivery_zone: deliveryZone.zone,
-  delivery_type: deliveryZone.delivery_type
-},
-
-                ncm: {
-                  source_branch: source,
-                  destination_branch: selectedBranch.name,
-                  branch_code: selectedBranch.code,
-                  district: selectedBranch.district_name,
-                  province: selectedBranch.province_name,
-                  shipping_rate: rateResponse
-                }
-
-              }, null, 2));
-
-            } catch (error) {
-              res.writeHead(500, {
-                "Content-Type": "application/json"
-              });
-
-              res.end(JSON.stringify({
-                test_mode: true,
-                error: "Failed to process NCM shipping rate",
-                details: error.message,
-                raw_response: rateData
-              }, null, 2));
-            }
-          });
-
-        } catch (error) {
-          res.writeHead(500, {
-            "Content-Type": "application/json"
-          });
-
-          res.end(JSON.stringify({
-            test_mode: true,
-            error: "Failed to process NCM branch data",
-            details: error.message
-          }, null, 2));
-        }
+    if (!selectedBranch) {
+      res.writeHead(404, {
+        "Content-Type": "application/json"
       });
 
-    })
+      res.end(JSON.stringify({
+        test_mode: true,
+        message: "Shopify order received, but no matching NCM branch was found",
+        order_id: order.id,
+        order_name: order.name,
+        customer_city: customerCity,
+        customer_address: customerAddress,
+        delivery_zone: deliveryZone.zone
+      }, null, 2));
+
+      return;
+    }
+
+    const source = "TINKUNE";
+    const destination = selectedBranch.name;
+
+    // Get NCM shipping rate
+    const ratePath =
+      `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
+      `&destination=${encodeURIComponent(destination)}` +
+      `&type=Send`;
+
+    getNcmData(ratePath, (rateStatusCode, rateData) => {
+      try {
+        const rateResponse = JSON.parse(rateData);
+
+        res.writeHead(200, {
+          "Content-Type": "application/json"
+        });
+
+        res.end(JSON.stringify({
+          test_mode: true,
+          message: "Shopify order → NCM branch → shipping rate test successful. No delivery was created.",
+
+          shopify_order: {
+            id: order.id,
+            name: order.name,
+            customer_city: customerCity,
+            customer_address: customerAddress,
+            delivery_zone: deliveryZone.zone,
+            delivery_type: deliveryZone.delivery_type
+          },
+
+          ncm: {
+            source_branch: source,
+            destination_branch: selectedBranch.name,
+            branch_code: selectedBranch.code,
+            district: selectedBranch.district_name,
+            province: selectedBranch.province_name,
+            shipping_rate: rateResponse
+          }
+
+        }, null, 2));
+
+      } catch (error) {
+        res.writeHead(500, {
+          "Content-Type": "application/json"
+        });
+
+        res.end(JSON.stringify({
+          test_mode: true,
+          error: "Failed to process NCM shipping rate",
+          details: error.message,
+          raw_response: rateData
+        }, null, 2));
+      }
+    });
+
+  } catch (error) {
+    res.writeHead(500, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      test_mode: true,
+      error: "Failed to process NCM branch data",
+      details: error.message
+    }, null, 2));
+  }
+});
+
     .catch((error) => {
       res.writeHead(500, {
         "Content-Type": "application/json"
