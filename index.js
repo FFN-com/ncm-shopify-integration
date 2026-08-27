@@ -2,6 +2,31 @@ const http = require("http");
 const https = require("https");
 
 const port = process.env.PORT || 10000;
+function getDeliveryZone(city, address) {
+  const location = `${city || ""} ${address || ""}`.toUpperCase();
+
+  const valleyAreas = [
+    "KATHMANDU",
+    "LALITPUR",
+    "BHAKTAPUR"
+  ];
+
+  const isInsideValley = valleyAreas.some(area =>
+    location.includes(area)
+  );
+
+  if (isInsideValley) {
+    return {
+      zone: "KATHMANDU_VALLEY",
+      delivery_type: "VALLEY"
+    };
+  }
+
+  return {
+    zone: "OUTSIDE_KATHMANDU_VALLEY",
+    delivery_type: "OUTSIDE_VALLEY"
+  };
+}
 
 function getNcmData(path, callback) {
   const options = {
