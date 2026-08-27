@@ -566,11 +566,13 @@ if (req.url.startsWith("/test-order-delivery")) {
                 message: "Shopify order → NCM branch → shipping rate test successful. No delivery was created.",
 
                 shopify_order: {
-                  id: order.id,
-                  name: order.name,
-                  customer_city: customerCity,
-                  customer_address: customerAddress
-                },
+  id: order.id,
+  name: order.name,
+  customer_city: customerCity,
+  customer_address: customerAddress,
+  delivery_zone: deliveryZone.zone,
+  delivery_type: deliveryZone.delivery_type
+},
 
                 ncm: {
                   source_branch: source,
