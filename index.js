@@ -344,32 +344,6 @@ async function getShopifyAccessToken() {
 
 // Test Shopify token
 if (req.url === "/test-shopify-token") {
-  getShopifyAccessToken()
-    .then((data) => {
-      res.writeHead(200, {
-        "Content-Type": "application/json"
-      });
-
-      res.end(JSON.stringify({
-        test_mode: true,
-        shopify_response: data
-      }, null, 2));
-    })
-    .catch((error) => {
-      res.writeHead(500, {
-        "Content-Type": "application/json"
-      });
-
-      res.end(JSON.stringify({
-        test_mode: true,
-        error: error.message
-      }, null, 2));
-    });
-
-  return;
-}
-  // Test Shopify token route
-if (req.url === "/test-shopify-token") {
   res.writeHead(200, {
     "Content-Type": "application/json"
   });
