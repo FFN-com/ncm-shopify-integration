@@ -642,7 +642,7 @@ getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
     }, null, 2));
   }
 });
-
+})
     .catch((error) => {
       res.writeHead(500, {
         "Content-Type": "application/json"
