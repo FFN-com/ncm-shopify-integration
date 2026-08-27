@@ -41,6 +41,18 @@ function getNcmData(path, callback) {
 const server = http.createServer((req, res) => {
     console.log("REQUEST RECEIVED:", req.method, req.url);
 if (req.url === "/hello") {
+  if (req.url === "/test-shopify-token") {
+  res.writeHead(200, {
+    "Content-Type": "application/json"
+  });
+
+  res.end(JSON.stringify({
+    test_mode: true,
+    message: "Shopify token route is working"
+  }, null, 2));
+
+  return;
+}
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Hello! Render is running the latest code.");
     return;
