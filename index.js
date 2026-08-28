@@ -1025,6 +1025,46 @@ getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
 
     return;
   }
+  if (req.url.startsWith("/test-production-branches")) {
+  const options = {
+    hostname: "portal.nepalcanmove.com",
+    path: "/api/v1/branchlist",
+    method: "GET",
+    headers: {
+      Authorization: `Token ${process.env.NCM_API_TOKEN}`,
+      "Content-Type": "application/json"
+    }
+  };
+
+  const request = https.request(options, (response) => {
+    let data = "";
+
+    response.on("data", (chunk) => {
+      data += chunk;
+    });
+
+    response.on("end", () => {
+      res.writeHead(response.statusCode, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(data);
+    });
+  });
+
+  request.on("error", (error) => {
+    res.writeHead(500, {
+      "Content-Type": "application/json"
+    });
+
+    res.end(JSON.stringify({
+      error: error.message
+    }));
+  });
+
+  request.end();
+  return;
+}
   // Page not found
   res.writeHead(404, {
     "Content-Type": "text/plain",
