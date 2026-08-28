@@ -689,380 +689,455 @@ getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
   return;
 }
     // Export complete NCM price list to Excel
-  if (pathname === "/export-ncm-prices") {
+if (pathname === "/export-ncm-prices") {
 
-    (async () => {
-      try {
+  (async () => {
+    try {
 
-        const source = "TINKUNE";
+      const source = "TINKUNE";
 
-        console.log("Starting NCM Excel export...");
+      console.log("Starting FULL NCM Excel export...");
 
-        // Get all NCM branches
-        const branches =
-          await getNcmDataAsync("/api/v2/branches");
+      // ==========================================
+      // 1. GET FULL NCM BRANCH LIST FROM PRODUCTION
+      // ==========================================
 
-        console.log(
-          `Found ${branches.length} NCM branches`
-        );
+      const productionBranches = await new Promise((resolve, reject) => {
 
-        const results = [];
-
-        // Get both prices for every branch
-        for (let i = 0; i < branches.length; i++) {
-
-          const branch = branches[i];
-
-          const destination =
-            (branch.name || "").trim();
-
-          if (!destination) {
-            continue;
+        const options = {
+          hostname: "portal.nepalcanmove.com",
+          path: "/api/v1/branchlist",
+          method: "GET",
+          headers: {
+            Authorization: `Token ${process.env.NCM_API_TOKEN}`,
+            "Content-Type": "application/json"
           }
-
-          console.log(
-            `Processing ${i + 1}/${branches.length}: ${destination}`
-          );
-
-          try {
-
-            const sendPath =
-              `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
-              `&destination=${encodeURIComponent(destination)}` +
-              `&type=Send`;
-
-            const b2bPath =
-              `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
-              `&destination=${encodeURIComponent(destination)}` +
-              `&type=B2B`;
-
-            // Fetch Branch → Door
-            const sendResponse =
-              await getNcmDataAsync(sendPath);
-
-            // Fetch Branch → Branch
-            const b2bResponse =
-              await getNcmDataAsync(b2bPath);
-
-            results.push({
-              sn: results.length + 1,
-              branch_code: branch.code || "",
-              branch_name: branch.name || "",
-              district: branch.district_name || "",
-              province: branch.province_name || "",
-              branch_to_branch:
-                b2bResponse.charge ?? "",
-              branch_to_door:
-                sendResponse.charge ?? "",
-              status: "SUCCESS"
-            });
-
-          } catch (error) {
-
-            console.error(
-              `Failed for ${destination}:`,
-              error.message
-            );
-
-            // Keep failed destinations in Sheet 1
-            results.push({
-              sn: results.length + 1,
-              branch_code: branch.code || "",
-              branch_name: branch.name || "",
-              district: branch.district_name || "",
-              province: branch.province_name || "",
-              branch_to_branch: "",
-              branch_to_door: "",
-              status: `FAILED: ${error.message}`
-            });
-          }
-
-          // Small delay to avoid overwhelming NCM API
-          await new Promise(resolve =>
-            setTimeout(resolve, 100)
-          );
-        }
-
-        console.log(
-          `Finished processing ${results.length} destinations`
-        );
-
-        // Create Excel workbook
-        const workbook = new ExcelJS.Workbook();
-
-        workbook.creator = "NCM Shopify Integration";
-        workbook.created = new Date();
-
-        // ==========================================
-        // SHEET 1: ALL NCM LOCATIONS & PRICES
-        // ==========================================
-
-        const allSheet =
-          workbook.addWorksheet(
-            "All NCM Locations & Prices"
-          );
-
-        allSheet.columns = [
-          {
-            header: "S.N.",
-            key: "sn",
-            width: 8
-          },
-          {
-            header: "Branch Code",
-            key: "branch_code",
-            width: 18
-          },
-          {
-            header: "Branch / Location",
-            key: "branch_name",
-            width: 28
-          },
-          {
-            header: "District",
-            key: "district",
-            width: 22
-          },
-          {
-            header: "Province",
-            key: "province",
-            width: 22
-          },
-          {
-            header: "Branch → Branch (NPR)",
-            key: "branch_to_branch",
-            width: 25
-          },
-          {
-            header: "Branch → Door (NPR)",
-            key: "branch_to_door",
-            width: 23
-          },
-          {
-            header: "Status",
-            key: "status",
-            width: 25
-          }
-        ];
-
-        results.forEach(row => {
-          allSheet.addRow(row);
-        });
-
-        allSheet.views = [
-          {
-            state: "frozen",
-            ySplit: 1
-          }
-        ];
-
-        allSheet.autoFilter =
-          `A1:H${allSheet.rowCount}`;
-
-        allSheet.getRow(1).font = {
-          bold: true
         };
 
-        // ==========================================
-        // SHEET 2: GROUPED BY SAME PRICE
-        // ==========================================
+        const request = https.request(options, (response) => {
 
-        const groupedSheet =
-          workbook.addWorksheet(
-            "Grouped by Same Price"
-          );
+          let data = "";
 
-        groupedSheet.columns = [
-          {
-            header: "Group",
-            key: "group",
-            width: 10
-          },
-          {
-            header: "Branch → Branch (NPR)",
-            key: "branch_to_branch",
-            width: 25
-          },
-          {
-            header: "Branch → Door (NPR)",
-            key: "branch_to_door",
-            width: 23
-          },
-          {
-            header: "Number of Locations",
-            key: "count",
-            width: 22
-          },
-          {
-            header: "Locations",
-            key: "locations",
-            width: 100
-          }
-        ];
+          response.on("data", (chunk) => {
+            data += chunk;
+          });
 
-        // Only group successful records
-        const successfulResults =
-          results.filter(row =>
-            row.status === "SUCCESS"
-          );
+          response.on("end", () => {
 
-        const grouped = {};
+            if (
+              response.statusCode < 200 ||
+              response.statusCode >= 300
+            ) {
+              reject(
+                new Error(
+                  `Production branch API error ${response.statusCode}: ${data}`
+                )
+              );
+              return;
+            }
 
-        successfulResults.forEach(row => {
+            try {
 
-          const key =
-            `${row.branch_to_branch}|${row.branch_to_door}`;
+              const parsed = JSON.parse(data);
 
-          if (!grouped[key]) {
-            grouped[key] = {
-              branch_to_branch:
-                row.branch_to_branch,
-              branch_to_door:
-                row.branch_to_door,
-              locations: []
-            };
-          }
+              /*
+                The API response appears to return:
 
-          grouped[key].locations.push(
-            row.branch_name
-          );
-        });
+                {
+                  "data": "[[...],[...]]"
+                }
 
-        const groups =
-          Object.values(grouped)
-            .sort((a, b) => {
+                So parse data again if it is a string.
+              */
 
-              const b2bDifference =
-                Number(a.branch_to_branch) -
-                Number(b.branch_to_branch);
-
-              if (b2bDifference !== 0) {
-                return b2bDifference;
+              if (typeof parsed.data === "string") {
+                resolve(JSON.parse(parsed.data));
+              } else if (Array.isArray(parsed.data)) {
+                resolve(parsed.data);
+              } else if (Array.isArray(parsed)) {
+                resolve(parsed);
+              } else {
+                reject(
+                  new Error(
+                    "Unexpected branch list format"
+                  )
+                );
               }
 
-              return (
-                Number(a.branch_to_door) -
-                Number(b.branch_to_door)
+            } catch (error) {
+              reject(
+                new Error(
+                  `Failed to parse production branch list: ${error.message}`
+                )
               );
-            });
+            }
 
-        groups.forEach((group, index) => {
-
-          groupedSheet.addRow({
-            group: index + 1,
-            branch_to_branch:
-              group.branch_to_branch,
-            branch_to_door:
-              group.branch_to_door,
-            count:
-              group.locations.length,
-            locations:
-              group.locations.join(", ")
           });
         });
 
-        groupedSheet.views = [
-          {
-            state: "frozen",
-            ySplit: 1
-          }
-        ];
+        request.on("error", reject);
 
-        groupedSheet.autoFilter =
-          `A1:E${groupedSheet.rowCount}`;
+        request.end();
 
-        groupedSheet.getRow(1).font = {
-          bold: true
-        };
-
-        // Send Excel file
-        const fileName =
-          "NCM_Tinkune_All_Branch_Prices.xlsx";
-
-        res.writeHead(200, {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
-          "Content-Disposition":
-            `attachment; filename="${fileName}"`
-        });
-
-        await workbook.xlsx.write(res);
-
-        res.end();
-
-        console.log(
-          "NCM Excel export completed successfully"
-        );
-
-      } catch (error) {
-
-        console.error(
-          "Excel export failed:",
-          error
-        );
-
-        if (!res.headersSent) {
-
-          res.writeHead(500, {
-            "Content-Type":
-              "application/json"
-          });
-
-          res.end(
-            JSON.stringify({
-              success: false,
-              error:
-                "Failed to generate NCM Excel file",
-              details:
-                error.message
-            }, null, 2)
-          );
-        }
-      }
-
-    })();
-
-    return;
-  }
-  if (req.url.startsWith("/test-production-branches")) {
-  const options = {
-    hostname: "portal.nepalcanmove.com",
-    path: "/api/v1/branchlist",
-    method: "GET",
-    headers: {
-      Authorization: `Token ${process.env.NCM_API_TOKEN}`,
-      "Content-Type": "application/json"
-    }
-  };
-
-  const request = https.request(options, (response) => {
-    let data = "";
-
-    response.on("data", (chunk) => {
-      data += chunk;
-    });
-
-    response.on("end", () => {
-      res.writeHead(response.statusCode, {
-        "Content-Type": "application/json"
       });
 
-      res.end(data);
-    });
-  });
+      console.log(
+        `Found ${productionBranches.length} production NCM branches`
+      );
 
-  request.on("error", (error) => {
-    res.writeHead(500, {
-      "Content-Type": "application/json"
-    });
+      // ==========================================
+      // 2. CONVERT PRODUCTION DATA TO OBJECT FORMAT
+      // ==========================================
 
-    res.end(JSON.stringify({
-      error: error.message
-    }));
-  });
+      const branches = productionBranches
+        .map(branch => {
 
-  request.end();
+          return {
+            name: (branch[0] || "").trim(),
+            code: (branch[1] || "").trim(),
+            areas_covered: branch[2] || "",
+            municipality: branch[3] || "",
+            district_name: branch[4] || "",
+            province_name: branch[5] || "",
+            phone: branch[6] || "",
+            geocode: branch[7] || "",
+            address: branch[8] || ""
+          };
+
+        })
+        .filter(branch => branch.name);
+
+      console.log(
+        `Processing ${branches.length} valid NCM destinations`
+      );
+
+      const results = [];
+
+      // ==========================================
+      // 3. GET TINKUNE PRICES FOR EVERY BRANCH
+      // ==========================================
+
+      for (let i = 0; i < branches.length; i++) {
+
+        const branch = branches[i];
+
+        const destination = branch.name;
+
+        console.log(
+          `Processing ${i + 1}/${branches.length}: ${destination}`
+        );
+
+        try {
+
+          // Branch → Door
+          const sendPath =
+            `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
+            `&destination=${encodeURIComponent(destination)}` +
+            `&type=Send`;
+
+          // Branch → Branch
+          const b2bPath =
+            `/api/v1/shipping-rate?creation=${encodeURIComponent(source)}` +
+            `&destination=${encodeURIComponent(destination)}` +
+            `&type=B2B`;
+
+          const sendResponse =
+            await getNcmDataAsync(sendPath);
+
+          const b2bResponse =
+            await getNcmDataAsync(b2bPath);
+
+          results.push({
+            sn: results.length + 1,
+            branch_code: branch.code,
+            branch_name: branch.name,
+            district: branch.district_name,
+            province: branch.province_name,
+            branch_to_branch:
+              b2bResponse.charge ?? "",
+            branch_to_door:
+              sendResponse.charge ?? "",
+            status: "SUCCESS"
+          });
+
+        } catch (error) {
+
+          console.error(
+            `Failed for ${destination}: ${error.message}`
+          );
+
+          results.push({
+            sn: results.length + 1,
+            branch_code: branch.code,
+            branch_name: branch.name,
+            district: branch.district_name,
+            province: branch.province_name,
+            branch_to_branch: "",
+            branch_to_door: "",
+            status: `FAILED: ${error.message}`
+          });
+
+        }
+
+        // Small delay to avoid overwhelming API
+        await new Promise(resolve =>
+          setTimeout(resolve, 150)
+        );
+
+      }
+
+      console.log(
+        `Finished processing ${results.length} destinations`
+      );
+
+      // ==========================================
+      // 4. CREATE EXCEL WORKBOOK
+      // ==========================================
+
+      const workbook = new ExcelJS.Workbook();
+
+      workbook.creator = "NCM Shopify Integration";
+      workbook.created = new Date();
+
+      // ==========================================
+      // SHEET 1: ALL LOCATIONS AND PRICES
+      // ==========================================
+
+      const allSheet =
+        workbook.addWorksheet(
+          "All NCM Locations & Prices"
+        );
+
+      allSheet.columns = [
+        {
+          header: "S.N.",
+          key: "sn",
+          width: 8
+        },
+        {
+          header: "Branch Code",
+          key: "branch_code",
+          width: 18
+        },
+        {
+          header: "Branch / Location",
+          key: "branch_name",
+          width: 28
+        },
+        {
+          header: "District",
+          key: "district",
+          width: 22
+        },
+        {
+          header: "Province",
+          key: "province",
+          width: 18
+        },
+        {
+          header: "Branch → Branch (NPR)",
+          key: "branch_to_branch",
+          width: 25
+        },
+        {
+          header: "Branch → Door (NPR)",
+          key: "branch_to_door",
+          width: 23
+        },
+        {
+          header: "Status",
+          key: "status",
+          width: 30
+        }
+      ];
+
+      results.forEach(row => {
+        allSheet.addRow(row);
+      });
+
+      allSheet.views = [
+        {
+          state: "frozen",
+          ySplit: 1
+        }
+      ];
+
+      allSheet.autoFilter =
+        `A1:H${allSheet.rowCount}`;
+
+      allSheet.getRow(1).font = {
+        bold: true
+      };
+
+      // ==========================================
+      // SHEET 2: GROUPED BY SAME PRICE
+      // ==========================================
+
+      const groupedSheet =
+        workbook.addWorksheet(
+          "Grouped by Same Price"
+        );
+
+      groupedSheet.columns = [
+        {
+          header: "Group",
+          key: "group",
+          width: 10
+        },
+        {
+          header: "Branch → Branch (NPR)",
+          key: "branch_to_branch",
+          width: 25
+        },
+        {
+          header: "Branch → Door (NPR)",
+          key: "branch_to_door",
+          width: 23
+        },
+        {
+          header: "Number of Locations",
+          key: "count",
+          width: 22
+        },
+        {
+          header: "Locations",
+          key: "locations",
+          width: 100
+        }
+      ];
+
+      const successfulResults =
+        results.filter(row =>
+          row.status === "SUCCESS"
+        );
+
+      const grouped = {};
+
+      successfulResults.forEach(row => {
+
+        const key =
+          `${row.branch_to_branch}|${row.branch_to_door}`;
+
+        if (!grouped[key]) {
+
+          grouped[key] = {
+            branch_to_branch:
+              row.branch_to_branch,
+            branch_to_door:
+              row.branch_to_door,
+            locations: []
+          };
+
+        }
+
+        grouped[key].locations.push(
+          row.branch_name
+        );
+
+      });
+
+      const groups =
+        Object.values(grouped)
+          .sort((a, b) => {
+
+            const b2bDifference =
+              Number(a.branch_to_branch) -
+              Number(b.branch_to_branch);
+
+            if (b2bDifference !== 0) {
+              return b2bDifference;
+            }
+
+            return (
+              Number(a.branch_to_door) -
+              Number(b.branch_to_door)
+            );
+
+          });
+
+      groups.forEach((group, index) => {
+
+        groupedSheet.addRow({
+          group: index + 1,
+          branch_to_branch:
+            group.branch_to_branch,
+          branch_to_door:
+            group.branch_to_door,
+          count:
+            group.locations.length,
+          locations:
+            group.locations.join(", ")
+        });
+
+      });
+
+      groupedSheet.views = [
+        {
+          state: "frozen",
+          ySplit: 1
+        }
+      ];
+
+      groupedSheet.autoFilter =
+        `A1:E${groupedSheet.rowCount}`;
+
+      groupedSheet.getRow(1).font = {
+        bold: true
+      };
+
+      // ==========================================
+      // 5. SEND EXCEL FILE
+      // ==========================================
+
+      const fileName =
+        "NCM_Tinkune_All_Branch_Prices.xlsx";
+
+      res.writeHead(200, {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+        "Content-Disposition":
+          `attachment; filename="${fileName}"`
+      });
+
+      await workbook.xlsx.write(res);
+
+      res.end();
+
+      console.log(
+        "FULL NCM Excel export completed successfully"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Excel export failed:",
+        error
+      );
+
+      if (!res.headersSent) {
+
+        res.writeHead(500, {
+          "Content-Type":
+            "application/json"
+        });
+
+        res.end(
+          JSON.stringify({
+            success: false,
+            error:
+              "Failed to generate full NCM Excel file",
+            details:
+              error.message
+          }, null, 2)
+        );
+
+      }
+
+    }
+
+  })();
+
   return;
 }
   // Page not found
