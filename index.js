@@ -94,7 +94,7 @@ const server = http.createServer((req, res) => {
     `http://${req.headers.host}`
   ).pathname;
   // Hello test
-  if (req.url === "/hello") {
+ if (pathname === "/hello") {
     res.writeHead(200, {
       "Content-Type": "text/plain"
     });
@@ -689,7 +689,7 @@ getNcmData("/api/v2/branches", (branchStatusCode, branchData) => {
   return;
 }
     // Export complete NCM price list to Excel
-  if (req.url === "/export-ncm-prices") {
+  if (pathname === "/export-ncm-prices") {
 
     (async () => {
       try {
