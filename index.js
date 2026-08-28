@@ -89,6 +89,10 @@ function getNcmDataAsync(path) {
 const server = http.createServer((req, res) => {
   console.log("REQUEST RECEIVED:", req.method, req.url);
 
+  const pathname = new URL(
+    req.url,
+    `http://${req.headers.host}`
+  ).pathname;
   // Hello test
   if (req.url === "/hello") {
     res.writeHead(200, {
