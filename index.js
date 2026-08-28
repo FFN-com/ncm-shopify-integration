@@ -63,6 +63,28 @@ function getNcmData(path, callback) {
 
   request.end();
 }
+function getNcmDataAsync(path) {
+  return new Promise((resolve, reject) => {
+    getNcmData(path, (statusCode, data) => {
+      if (statusCode < 200 || statusCode >= 300) {
+        reject(
+          new Error(`NCM API error ${statusCode}: ${data}`)
+        );
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(data));
+      } catch (error) {
+        reject(
+          new Error(
+            `Invalid JSON received from NCM API: ${data}`
+          )
+        );
+      }
+    });
+  });
+}
 
 const server = http.createServer((req, res) => {
   console.log("REQUEST RECEIVED:", req.method, req.url);
